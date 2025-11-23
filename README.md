@@ -66,6 +66,7 @@ These assume Docker already provides isolation and remove in-agent approval prom
 ```bash
 ./tests/smoke.sh           # quiet pass/fail summary
 ./tests/smoke.sh --verbose # detailed step output + container logs
+./tests/setup.sh           # validates agentbox-setup writes expected config
 ```
 The harness checks user identity, workspace access, network allowlist/override, codex prompt execution, CLI availability, and default launch.
 
