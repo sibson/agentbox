@@ -25,7 +25,7 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 
 ### Networking
 - Default egress is limited to Codex/Claude API hosts (`api.openai.com`, `platform.openai.com`, `chatgpt.com`, `chat.openai.com`, `auth.openai.com`, `api.anthropic.com`).
-- Add hosts to the allowlist in `.agentbox/config.toml` (project) or `~/.agentbox/config.toml` (user):
+- Add hosts to the allowlist in `.agentbox` (project) or `~/.agentbox` (user):
   ```toml
   [[network.allow]]
   host = "api.github.com"
