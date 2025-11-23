@@ -14,7 +14,8 @@ DEFAULT_ALLOW_HOSTS=(
   "auth.openai.com"
   "api.anthropic.com"
 )
-CONFIG_FILE="${PWD}/.agentbox/config.toml"
+CONFIG_LOCAL="${PWD}/.agentbox/config.toml"
+CONFIG_HOME="${HOME}/.agentbox/config.toml"
 
 TARGET_AGENT="${AGENTBOX_AGENT:-}"
 BASE_IMAGE="${DEFAULT_BASE_IMAGE}"
@@ -129,21 +130,21 @@ compute_allow_hosts() {
   local defaults_joined
   defaults_joined="$(printf '%s\n' "${DEFAULT_ALLOW_HOSTS[@]}" | paste -sd' ' -)"
 
+  local config_paths_joined
+  config_paths_joined="$(printf '%s:' "${CONFIG_LOCAL}" "${CONFIG_HOME}")"
+
   local py_tmp
   py_tmp="$(mktemp)"
   cat >"${py_tmp}" <<'PY'
-import os, re, sys
+import os, re
 
 defaults = [h for h in os.environ.get("DEFAULT_ALLOW_HOSTS_STR", "").split() if h]
-config_path = os.environ.get("CONFIG_PATH")
+config_paths = [p for p in os.environ.get("CONFIG_PATHS", "").split(":") if p]
 
 allow = set(defaults)
 block = set()
 
-if config_path and os.path.isfile(config_path):
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = f.read()
-
+def process_raw(raw: str):
     toml_mod = None
     try:
         import tomllib as toml_mod  # type: ignore
@@ -177,13 +178,19 @@ if config_path and os.path.isfile(config_path):
         for host in block_pat.findall(raw):
             block.add(host.strip())
 
+for path in config_paths:
+    if not os.path.isfile(path):
+        continue
+    with open(path, "r", encoding="utf-8") as f:
+        process_raw(f.read())
+
 effective = sorted(h for h in allow if h and h not in block)
 print(" ".join(effective))
 PY
 
   local allow_joined
   allow_joined="$(
-    DEFAULT_ALLOW_HOSTS_STR="${defaults_joined}" CONFIG_PATH="${CONFIG_FILE}" python3 "${py_tmp}"
+    DEFAULT_ALLOW_HOSTS_STR="${defaults_joined}" CONFIG_PATHS="${config_paths_joined}" python3 "${py_tmp}"
   )"
   local status=$?
   rm -f "${py_tmp}"
