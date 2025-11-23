@@ -13,10 +13,17 @@ echo "Agentbox setup"
 echo "This will write a TOML config to ${PROJECT_CONFIG}"
 echo
 echo "Available toolkits:"
-mapfile -t TOOLKIT_NAMES < <(cd "${REPO_ROOT}/toolkits" && ls *.list 2>/dev/null | sed 's/\\.list$//' | sort)
-for name in "${TOOLKIT_NAMES[@]}"; do
-  printf " - %s\n" "${name}"
-done
+TOOLKIT_NAMES=()
+while IFS= read -r name; do
+  TOOLKIT_NAMES+=("${name}")
+done < <(cd "${REPO_ROOT}/toolkits" && ls *.list 2>/dev/null | sed 's/\.list$//' | sort)
+if [[ ${#TOOLKIT_NAMES[@]} -eq 0 ]]; then
+  echo " (none found)"
+else
+  for name in "${TOOLKIT_NAMES[@]}"; do
+    printf " - %s\n" "${name}"
+  done
+fi
 echo
 read -r -p "Select toolkits (space-separated, leave empty for none): " -a SELECTED
 
