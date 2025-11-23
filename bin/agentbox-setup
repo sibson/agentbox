@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_CONFIG="${PWD}/.agentbox"
+
+if [[ ! -d "${REPO_ROOT}/toolkits" ]]; then
+  echo "toolkits directory not found; aborting" >&2
+  exit 1
+fi
+
+echo "Agentbox setup"
+echo "This will write a TOML config to ${PROJECT_CONFIG}"
+echo
+echo "Available toolkits:"
+mapfile -t TOOLKIT_NAMES < <(cd "${REPO_ROOT}/toolkits" && ls *.list 2>/dev/null | sed 's/\\.list$//' | sort)
+for name in "${TOOLKIT_NAMES[@]}"; do
+  printf " - %s\n" "${name}"
+done
+echo
+read -r -p "Select toolkits (space-separated, leave empty for none): " -a SELECTED
+
+{
+  echo "# Agentbox configuration"
+  echo ""
+  echo "[toolkits]"
+  if [[ ${#SELECTED[@]} -gt 0 ]]; then
+    printf 'selected = ['
+    first=1
+    for tk in "${SELECTED[@]}"; do
+      [[ -z "${tk}" ]] && continue
+      if [[ ${first} -eq 1 ]]; then
+        first=0
+      else
+        printf ', '
+      fi
+      printf '"%s"' "${tk}"
+    done
+    echo "]"
+  else
+    echo 'selected = []'
+  fi
+} > "${PROJECT_CONFIG}"
+
+echo "Wrote ${PROJECT_CONFIG}"
