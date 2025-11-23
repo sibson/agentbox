@@ -11,7 +11,7 @@ usage() {
   cat <<'USAGE'
 Usage: tests/smoke.sh [--verbose]
 
-Runs the Agentbox smoke tests (identity, workspace access, CLI availability).
+Runs the Agentbox smoke tests (identity, workspace access, CLI availability, codex prompt).
 
 Options:
   -v, --verbose   Show per-step status and container logs.
@@ -69,14 +69,14 @@ else
   echo "Running smoke tests..."
 fi
 
-echo "[1/5] verifying agent identity"
+echo "[1/6] verifying agent identity"
 output="$(run_agent_capture "${CODEX_RUN}" -- whoami)"
 if [[ "${output}" != "agent" ]]; then
   echo "expected user 'agent', got '${output}'" >&2
   exit 1
 fi
 
-echo "[2/5] verifying workspace access"
+echo "[2/6] verifying workspace access"
 test_file="${tmpdir}/sandbox.txt"
 echo "host-data" > "${test_file}"
 pushd "${tmpdir}" >/dev/null
@@ -87,7 +87,7 @@ if ! grep -q "container" "${test_file}"; then
   exit 1
 fi
 
-echo "[3/5] verifying network allowlist and override"
+echo "[3/6] verifying network allowlist and override"
 if run_agent_silent "${CODEX_RUN}" -- bash -lc "curl --silent --fail --max-time 5 https://example.com >/dev/null"; then
   echo "example.com should be blocked by the default allowlist" >&2
   exit 1
@@ -97,7 +97,7 @@ if ! run_agent_silent "${CODEX_RUN}" --full-network -- bash -lc "curl --silent -
   exit 1
 fi
 
-echo "[4/5] verifying agent CLIs"
+echo "[4/6] verifying agent CLIs"
 if ! run_agent_silent "${CODEX_RUN}" -- bash -lc "command -v codex >/dev/null"; then
   echo "codex CLI not functioning" >&2
   exit 1
@@ -107,7 +107,14 @@ if ! run_agent_silent "${CLAUDE_RUN}" -- bash -lc "command -v claude >/dev/null"
   exit 1
 fi
 
-echo "[5/5] verifying default agent launch"
+echo "[5/6] verifying codex prompt execution"
+codex_prompt_output="$(run_agent_capture "${CODEX_RUN}" --prompt "ping" || true)"
+if [[ -z "${codex_prompt_output// }" ]]; then
+  echo "codex prompt did not return output" >&2
+  exit 1
+fi
+
+echo "[6/6] verifying default agent launch"
 if ! AGENTBOX_TTY=0 AGENTBOX_VERBOSE=0 "${CODEX_RUN}" >/dev/null 2>&1; then
   echo "default agent launch failed without explicit command" >&2
   exit 1
