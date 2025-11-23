@@ -20,7 +20,7 @@
 
 ## `.agentbox` Configuration
 
-`agentbox-setup` writes a TOML file at `.agentbox` (project root) or falls back to `~/.agentbox`. Relevant sections:
+`agentbox-setup` writes a TOML file at `.agentbox` (project root) or, if absent, uses `~/.agentbox`. Relevant sections:
 
 ```toml
 [agents]

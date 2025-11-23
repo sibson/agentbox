@@ -14,12 +14,8 @@ DEFAULT_ALLOW_HOSTS=(
   "auth.openai.com"
   "api.anthropic.com"
 )
-CONFIG_CANDIDATES=(
-  "${PWD}/.agentbox"
-  "${PWD}/.agentbox/config.toml"
-  "${HOME}/.agentbox"
-  "${HOME}/.agentbox/config.toml"
-)
+CONFIG_PROJECT="${PWD}/.agentbox"
+CONFIG_HOME="${HOME}/.agentbox"
 
 TARGET_AGENT="${AGENTBOX_AGENT:-}"
 BASE_IMAGE="${DEFAULT_BASE_IMAGE}"
@@ -135,7 +131,7 @@ compute_allow_hosts() {
   defaults_joined="$(printf '%s\n' "${DEFAULT_ALLOW_HOSTS[@]}" | paste -sd' ' -)"
 
   local config_paths_joined
-  config_paths_joined="$(printf '%s:' "${CONFIG_CANDIDATES[@]}")"
+  config_paths_joined="$(printf '%s:' "${CONFIG_PROJECT}" "${CONFIG_HOME}")"
 
   local py_tmp
   py_tmp="$(mktemp)"
