@@ -10,8 +10,13 @@
 - Agentbox will build a per-session allowlist enforced by `iptables` inside the container namespace.
 - Default allowlist hosts (applied unless explicitly blocklisted):
   - `api.openai.com`
+  - `platform.openai.com`
+  - `chatgpt.com`
+  - `chat.openai.com`
+  - `auth.openai.com`
   - `api.anthropic.com`
 - DNS traffic is restricted to the container’s resolver (typically Docker’s embedded DNS) and only for domains in the current allowlist set.
+- Operators can bypass the firewall intentionally with `--full-network` (bridge networking, no allowlist).
 
 ## `.agentbox` Configuration
 
@@ -78,4 +83,3 @@ host = "api.anthropic.com" # remove default host without editing built-in list
 - Expose a dry-run mode that prints the final allowlist/IP table for auditing.
 
 This spec complements `docs/security.md`; together they describe what outbound paths exist and how they’re controlled.
-

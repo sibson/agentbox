@@ -4,7 +4,7 @@ This document captures the current security posture of Agentbox so contributors 
 
 ## Goals
 - Allow CLI agents (Codex, Claude Code) to work inside an isolated container that mirrors the developer’s workspace.
-- Prevent the agent from gaining additional privileges (e.g., root escalation) while allowing full network access when required.
+- Prevent the agent from gaining additional privileges (e.g., root escalation) while keeping outbound access constrained to a small, auditable allowlist (with an explicit escape hatch).
 - Make host access explicit and easy to audit.
 
 ## Container Isolation Decisions
@@ -15,7 +15,7 @@ This document captures the current security posture of Agentbox so contributors 
 | User model | Non-root `agent` user with home dir `/home/agent` | Limits impact of agent compromise; aligns with no-root spec. |
 | Capabilities | All Linux capabilities dropped (`--cap-drop ALL`) + `--security-opt no-new-privileges` | Prevents privilege escalation via ambient caps or setuid binaries. |
 | Process limits | `--pids-limit 512` | Mitigates fork bombs / runaway workloads. |
-| Networking | `--network bridge` (full network access) | Aligns with current need to reach agent backends. |
+| Networking | Dedicated firewall container programs iptables allowlist; agent container joins its namespace | Allows tight egress control (OpenAI/Anthropic by default) without granting NET_ADMIN to the agent. |
 | Filesystem | Host project mounted read/write at `/workspace` | Gives agents the working tree while keeping other host paths out of scope. |
 | Agent configs | Mount host credential/config directories manually if needed. | Keeps auth outside the image. |
 | Entry point | `agent-entrypoint` launches the requested agent CLI only when a TTY is available; otherwise falls back to `/bin/bash`. | Prevents non-interactive tasks from blocking waiting for UI input while keeping default UX for humans. |
@@ -30,7 +30,7 @@ This document captures the current security posture of Agentbox so contributors 
 - No other host paths are mounted by default; mount auth dirs manually if needed.
 
 ## Network and Capability Posture
-- Network: bridge (full access).
+- Network: iptables allowlist (defaults: `api.openai.com`, `platform.openai.com`, `chatgpt.com`, `chat.openai.com`, `auth.openai.com`, `api.anthropic.com`); `--full-network` bypasses it.
 - Capabilities: `--cap-drop ALL`, `--security-opt no-new-privileges`.
 - User: non-root `agent`.
 

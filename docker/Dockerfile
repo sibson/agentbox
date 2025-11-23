@@ -17,6 +17,7 @@ RUN apt-get update \
         git \
         iproute2 \
         iputils-ping \
+        iptables \
         jq \
         netcat-traditional \
         nodejs \
@@ -36,7 +37,8 @@ RUN npm install -g @openai/codex && npm cache clean --force
 
 WORKDIR /workspace
 COPY docker/entrypoint.sh /usr/local/bin/agent-entrypoint
-RUN chmod +x /usr/local/bin/agent-entrypoint
+COPY docker/firewall.sh /usr/local/bin/agent-firewall
+RUN chmod +x /usr/local/bin/agent-entrypoint /usr/local/bin/agent-firewall
 
 RUN runuser -u "${AGENT_USERNAME}" -- bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'
 

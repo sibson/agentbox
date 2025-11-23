@@ -87,7 +87,15 @@ if ! grep -q "container" "${test_file}"; then
   exit 1
 fi
 
-echo "[3/5] skipping network isolation (full network allowed)"
+echo "[3/5] verifying network allowlist and override"
+if run_agent_silent "${CODEX_RUN}" -- bash -lc "curl --silent --fail --max-time 5 https://example.com >/dev/null"; then
+  echo "example.com should be blocked by the default allowlist" >&2
+  exit 1
+fi
+if ! run_agent_silent "${CODEX_RUN}" --full-network -- bash -lc "curl --silent --fail --max-time 5 https://example.com >/dev/null"; then
+  echo "--full-network did not permit outbound access" >&2
+  exit 1
+fi
 
 echo "[4/5] verifying agent CLIs"
 if ! run_agent_silent "${CODEX_RUN}" -- bash -lc "command -v codex >/dev/null"; then

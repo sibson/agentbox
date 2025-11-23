@@ -6,27 +6,37 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 DEFAULT_BASE_IMAGE="debian:bookworm-slim"
 VERBOSE="${AGENTBOX_VERBOSE:-0}"
+DEFAULT_ALLOW_HOSTS=(
+  "api.openai.com"
+  "platform.openai.com"
+  "chatgpt.com"
+  "chat.openai.com"
+  "auth.openai.com"
+  "api.anthropic.com"
+)
+CONFIG_FILE="${PWD}/.agentbox/config.toml"
 
 TARGET_AGENT="${AGENTBOX_AGENT:-}"
 BASE_IMAGE="${DEFAULT_BASE_IMAGE}"
 BUILD_ONLY=0
 PROMPT_VALUE=""
+FULL_NETWORK=0
 CUSTOM_CMD=()
 HOST_CODEX_AUTH="${AGENTBOX_CODEX_AUTH:-${HOME}/.codex}"
 HOST_CLAUDE_AUTH="${AGENTBOX_CLAUDE_AUTH:-${HOME}/.claude}"
-VERBOSE="${AGENTBOX_VERBOSE:-0}"
 
 usage() {
   cat <<'USAGE'
 Usage: bin/agentbox-run [--base <image>] [--build-only] <agent> [-- <command>]
 
-Minimal launcher: builds the image (if needed) and runs the agent with full network access.
+Minimal launcher: builds the image (if needed) and runs the agent with a network allowlist (OpenAI/Anthropic by default).
 
 Options:
-  --base <image>    Override base image (default: debian:bookworm-slim)
-  --build-only      Build the image and exit
-  --prompt <text>   Run a one-off Codex exec with the given prompt (codex only)
-  -h, --help        Show this help
+  --base <image>     Override base image (default: debian:bookworm-slim)
+  --build-only       Build the image and exit
+  --prompt <text>    Run a one-off Codex exec with the given prompt (codex only)
+  --full-network     Disable firewall allowlist (bridge networking)
+  -h, --help         Show this help
 USAGE
 }
 
@@ -42,6 +52,8 @@ while [[ $# -gt 0 ]]; do
     --prompt)
       [[ $# -ge 2 ]] || fatal "--prompt requires a value"
       PROMPT_VALUE="$2"; shift 2;;
+    --full-network)
+      FULL_NETWORK=1; shift;;
     -h|--help)
       usage; exit 0;;
     --)
@@ -66,21 +78,12 @@ fi
 TAG="agentbox/${TARGET_AGENT}:$(echo "${BASE_IMAGE}" | tr '/:' '_')"
 
 if [[ "${VERBOSE}" == "1" ]]; then
-if [[ "${VERBOSE}" == "1" ]]; then
-  echo "-> Building image ${TAG} (base: ${BASE_IMAGE})"
+  echo "-> Building image ${TAG} (base: ${BASE_IMAGE})" >&2
   docker build \
     --file "${REPO_ROOT}/docker/Dockerfile" \
     --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
     --tag "${TAG}" \
     "${REPO_ROOT}"
-else
-  docker build \
-    --quiet \
-    --file "${REPO_ROOT}/docker/Dockerfile" \
-    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-    --tag "${TAG}" \
-    "${REPO_ROOT}" >/dev/null
-fi
 else
   docker build \
     --quiet \
@@ -118,7 +121,82 @@ else
   fi
 fi
 
-[[ "${VERBOSE}" == "1" ]] && echo "-> Launching sandbox for ${TARGET_AGENT}"
+compute_allow_hosts() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    fatal "python3 is required for parsing .agentbox/config.toml"
+  fi
+
+  local defaults_joined
+  defaults_joined="$(printf '%s\n' "${DEFAULT_ALLOW_HOSTS[@]}" | paste -sd' ' -)"
+
+  local py_tmp
+  py_tmp="$(mktemp)"
+  cat >"${py_tmp}" <<'PY'
+import os, re, sys
+
+defaults = [h for h in os.environ.get("DEFAULT_ALLOW_HOSTS_STR", "").split() if h]
+config_path = os.environ.get("CONFIG_PATH")
+
+allow = set(defaults)
+block = set()
+
+if config_path and os.path.isfile(config_path):
+    with open(config_path, "r", encoding="utf-8") as f:
+        raw = f.read()
+
+    toml_mod = None
+    try:
+        import tomllib as toml_mod  # type: ignore
+    except ModuleNotFoundError:
+        try:
+            import tomli as toml_mod  # type: ignore
+        except ModuleNotFoundError:
+            toml_mod = None
+
+    data = None
+    if toml_mod:
+        try:
+            data = toml_mod.loads(raw)
+        except Exception:
+            data = None
+
+    if data is not None:
+        for entry in data.get("network", {}).get("allow", []):
+            host = entry.get("host")
+            if host:
+                allow.add(host.strip())
+        for entry in data.get("network", {}).get("block", []):
+            host = entry.get("host")
+            if host:
+                block.add(host.strip())
+    else:
+        allow_pat = re.compile(r'\[\s*\[\s*network\.allow\s*\]\s*\].*?host\s*=\s*["\']([^"\']+)["\']', re.DOTALL)
+        block_pat = re.compile(r'\[\s*\[\s*network\.block\s*\]\s*\].*?host\s*=\s*["\']([^"\']+)["\']', re.DOTALL)
+        for host in allow_pat.findall(raw):
+            allow.add(host.strip())
+        for host in block_pat.findall(raw):
+            block.add(host.strip())
+
+effective = sorted(h for h in allow if h and h not in block)
+print(" ".join(effective))
+PY
+
+  local allow_joined
+  allow_joined="$(
+    DEFAULT_ALLOW_HOSTS_STR="${defaults_joined}" CONFIG_PATH="${CONFIG_FILE}" python3 "${py_tmp}"
+  )"
+  local status=$?
+  rm -f "${py_tmp}"
+  if [[ ${status} -ne 0 ]]; then
+    fatal "failed to parse network config"
+  fi
+
+  IFS=' ' read -r -a ALLOW_HOSTS <<<"${allow_joined}"
+}
+
+compute_allow_hosts
+
+[[ "${VERBOSE}" == "1" ]] && echo "-> Launching sandbox for ${TARGET_AGENT}" >&2
 MOUNTS=("-v" "${PWD}":/workspace)
 if [[ "${TARGET_AGENT}" == "codex" && -d "${HOST_CODEX_AUTH}" ]]; then
   MOUNTS+=("-v" "${HOST_CODEX_AUTH}:/home/agent/.codex")
@@ -127,12 +205,46 @@ if [[ "${TARGET_AGENT}" == "claude" && -d "${HOST_CLAUDE_AUTH}" ]]; then
   MOUNTS+=("-v" "${HOST_CLAUDE_AUTH}:/home/agent/.claude")
 fi
 
+NETWORK_ARGS=()
+FIREWALL_CID=""
+ALLOW_HOSTS_ENV="${ALLOW_HOSTS[*]}"
+ALLOWLIST_DESC="${ALLOW_HOSTS_ENV}"
+[[ -z "${ALLOWLIST_DESC}" ]] && ALLOWLIST_DESC="none"
+
+cleanup() {
+  if [[ -n "${FIREWALL_CID}" ]]; then
+    docker rm -f "${FIREWALL_CID}" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
+if [[ "${FULL_NETWORK}" -eq 1 ]]; then
+  NETWORK_ARGS=(--network bridge)
+else
+  FIREWALL_NAME="agentbox-firewall-${TARGET_AGENT}-$$"
+  [[ "${VERBOSE}" == "1" ]] && echo "-> Starting firewall container (${ALLOWLIST_DESC})" >&2
+  FIREWALL_CID="$(docker run \
+    --rm \
+    -d \
+    --name "${FIREWALL_NAME}" \
+    --network bridge \
+    --cap-drop ALL \
+    --cap-add NET_ADMIN \
+    --security-opt no-new-privileges \
+    --user root \
+    --entrypoint /usr/local/bin/agent-firewall \
+    -e "ALLOW_HOSTS=${ALLOW_HOSTS_ENV}" \
+    -e "VERBOSE=${VERBOSE}" \
+    "${TAG}")"
+  NETWORK_ARGS=(--network "container:${FIREWALL_CID}")
+fi
+
 docker run \
   --rm \
   -i \
   ${TTY_OPT:+${TTY_OPT}} \
   --name "agentbox-${TARGET_AGENT}-$$" \
-  --network bridge \
+  "${NETWORK_ARGS[@]}" \
   --cap-drop ALL \
   --pids-limit 512 \
   --security-opt no-new-privileges \

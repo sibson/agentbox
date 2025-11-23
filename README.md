@@ -5,7 +5,7 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 ## Features
 - Debian-based sandbox, base image override via `--base`.
 - Non-root execution with capabilities dropped; host workspace mounted at `/workspace`.
-- Full network access by default (no firewall).
+- Network allowlist by default (OpenAI/Anthropic endpoints); opt-in `--full-network` to bypass.
 - Simple smoke-test harness.
 
 ## Prerequisites
@@ -22,6 +22,15 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 
 ### Authentication
 - Configure host credential directories as needed (e.g., Codex `~/.codex`, Claude `~/.claude`). The launcher does not manage these paths; mount them manually if required.
+
+### Networking
+- Default egress is limited to Codex/Claude API hosts (`api.openai.com`, `platform.openai.com`, `chatgpt.com`, `chat.openai.com`, `auth.openai.com`, `api.anthropic.com`).
+- Add hosts to the allowlist in `.agentbox/config.toml`:
+  ```toml
+  [[network.allow]]
+  host = "api.github.com"
+  ```
+- Remove hosts with `[[network.block]]` entries, or run with `--full-network` to disable the firewall entirely.
 
 ### Default agent flags in the sandbox
 - Codex runs with `--dangerously-bypass-approvals-and-sandbox` by default when launched via `agentbox-codex` (TTY sessions).
