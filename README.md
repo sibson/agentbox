@@ -3,10 +3,11 @@
 Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) locally with strong isolation and easy access to your working directory.
 
 ## Features
-- Debian-based sandbox, base image override via `--base`.
-- Non-root execution with capabilities dropped; host workspace mounted at `/workspace`.
-- Network allowlist by default (OpenAI/Anthropic endpoints); opt-in `--full-network` to bypass.
-- Simple smoke-test harness.
+- Debian-based sandbox (override with `--base`).
+- Non-root execution with dropped capabilities; host workspace mounted at `/workspace`.
+- Network allowlist enforced via a firewall namespace (OpenAI/Anthropic + ChatGPT/auth hosts by default); opt-in `--full-network` to bypass.
+- Per-project/user config via `.agentbox` / `~/.agentbox` for allowlist entries.
+- Smoke-test harness (includes codex prompt check).
 
 ## Prerequisites
 - Docker daemon available locally.
@@ -40,6 +41,7 @@ These assume Docker already provides isolation and remove in-agent approval prom
 ### Flags and env vars
 - `--base <image>` overrides the base image (pass after the shim, e.g., `agentbox-codex --base ubuntu:24.04`).
 - `AGENTBOX_VERBOSE=1` streams Docker build output; `AGENTBOX_TTY=0|1|auto` controls TTY allocation.
+- Allowlist resolution order: project `.agentbox` takes priority over `~/.agentbox`.
 
 ### Legacy shims
 - `bin/agentbox-run` still accepts an explicit agent argument if you prefer.
@@ -49,7 +51,7 @@ These assume Docker already provides isolation and remove in-agent approval prom
 ./tests/smoke.sh           # quiet pass/fail summary
 ./tests/smoke.sh --verbose # detailed step output + container logs
 ```
-The harness checks user identity, workspace access, CLI availability, and default launch.
+The harness checks user identity, workspace access, network allowlist/override, codex prompt execution, CLI availability, and default launch.
 
 ## Project Layout
 - `bin/agentbox-run` – launches agents.
