@@ -12,7 +12,7 @@ Welcome! This repo builds a Docker sandbox launcher plus tests. Follow the steps
 - Mount host auth dirs manually if you need them inside the container.
 
 ### 3. Testing & Verification
-- Run `./tests/smoke.sh` after meaningful Docker/launcher/config changes.
+- Always run the relevant tests before committing (at minimum `./tests/smoke.sh`; include new tests you add).
 - Add new tests alongside new features when possible.
 
 ### 4. Safety & Constraints
