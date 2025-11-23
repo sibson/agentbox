@@ -1,0 +1,4 @@
+# C/C++ toolkit
+build-essential
+cmake
+gdb

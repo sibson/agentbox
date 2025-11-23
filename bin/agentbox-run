@@ -16,12 +16,14 @@ DEFAULT_ALLOW_HOSTS=(
 )
 CONFIG_PROJECT="${PWD}/.agentbox"
 CONFIG_HOME="${HOME}/.agentbox"
+CONFIG_PATHS_JOINED="$(printf '%s:' "${CONFIG_PROJECT}" "${CONFIG_HOME}")"
 
 TARGET_AGENT="${AGENTBOX_AGENT:-}"
 BASE_IMAGE="${DEFAULT_BASE_IMAGE}"
 BUILD_ONLY=0
 PROMPT_VALUE=""
 FULL_NETWORK=0
+TOOLKITS=()
 CUSTOM_CMD=()
 HOST_CODEX_AUTH="${AGENTBOX_CODEX_AUTH:-${HOME}/.codex}"
 HOST_CLAUDE_AUTH="${AGENTBOX_CLAUDE_AUTH:-${HOME}/.claude}"
@@ -76,29 +78,6 @@ if [[ -z "${TARGET_AGENT}" ]]; then
   fatal "Missing agent argument"
 fi
 
-TAG="agentbox/${TARGET_AGENT}:$(echo "${BASE_IMAGE}" | tr '/:' '_')"
-
-if [[ "${VERBOSE}" == "1" ]]; then
-  echo "-> Building image ${TAG} (base: ${BASE_IMAGE})" >&2
-  docker build \
-    --file "${REPO_ROOT}/docker/Dockerfile" \
-    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-    --tag "${TAG}" \
-    "${REPO_ROOT}"
-else
-  docker build \
-    --quiet \
-    --file "${REPO_ROOT}/docker/Dockerfile" \
-    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-    --tag "${TAG}" \
-    "${REPO_ROOT}" >/dev/null
-fi
-
-if [[ "${BUILD_ONLY}" -eq 1 ]]; then
-  echo "Build complete for ${TARGET_AGENT}"
-  exit 0
-fi
-
 TTY_OPT=""
 if [[ -t 0 && -t 1 ]]; then
   TTY_OPT="-t"
@@ -122,16 +101,77 @@ else
   fi
 fi
 
+compute_toolkits() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    fatal "python3 is required for parsing .agentbox"
+  fi
+
+  local py_tmp
+  py_tmp="$(mktemp)"
+  cat >"${py_tmp}" <<'PY'
+import os, re
+
+config_paths = [p for p in os.environ.get("CONFIG_PATHS", "").split(":") if p]
+selected = []
+
+def process_raw(raw: str):
+    toml_mod = None
+    try:
+        import tomllib as toml_mod  # type: ignore
+    except ModuleNotFoundError:
+        try:
+            import tomli as toml_mod  # type: ignore
+        except ModuleNotFoundError:
+            toml_mod = None
+
+    data = None
+    if toml_mod:
+        try:
+            data = toml_mod.loads(raw)
+        except Exception:
+            data = None
+
+    if data is not None:
+        for name in data.get("toolkits", {}).get("selected", []):
+            if isinstance(name, str):
+                selected.append(name.strip())
+    else:
+        toolkits_pat = re.compile(r'\[toolkits\].*?selected\s*=\s*\[(.*?)\]', re.DOTALL)
+        m = toolkits_pat.search(raw)
+        if m:
+            items = re.findall(r'["\']([^"\']+)["\']', m.group(1))
+            for name in items:
+                selected.append(name.strip())
+
+for path in config_paths:
+    if not os.path.isfile(path):
+        continue
+    with open(path, "r", encoding="utf-8") as f:
+        process_raw(f.read())
+
+names = sorted({n for n in selected if n})
+print(" ".join(names))
+PY
+
+  local tk_joined
+  tk_joined="$(CONFIG_PATHS="${CONFIG_PATHS_JOINED}" python3 "${py_tmp}")"
+  local status=$?
+  rm -f "${py_tmp}"
+  if [[ ${status} -ne 0 ]]; then
+    fatal "failed to parse toolkits from .agentbox"
+  fi
+
+  TOOLKITS=()
+  IFS=' ' read -r -a TOOLKITS <<<"${tk_joined}"
+}
+
 compute_allow_hosts() {
   if ! command -v python3 >/dev/null 2>&1; then
-    fatal "python3 is required for parsing .agentbox/config.toml"
+    fatal "python3 is required for parsing .agentbox"
   fi
 
   local defaults_joined
   defaults_joined="$(printf '%s\n' "${DEFAULT_ALLOW_HOSTS[@]}" | paste -sd' ' -)"
-
-  local config_paths_joined
-  config_paths_joined="$(printf '%s:' "${CONFIG_PROJECT}" "${CONFIG_HOME}")"
 
   local py_tmp
   py_tmp="$(mktemp)"
@@ -190,7 +230,7 @@ PY
 
   local allow_joined
   allow_joined="$(
-    DEFAULT_ALLOW_HOSTS_STR="${defaults_joined}" CONFIG_PATHS="${config_paths_joined}" python3 "${py_tmp}"
+    DEFAULT_ALLOW_HOSTS_STR="${defaults_joined}" CONFIG_PATHS="${CONFIG_PATHS_JOINED}" python3 "${py_tmp}"
   )"
   local status=$?
   rm -f "${py_tmp}"
@@ -201,7 +241,39 @@ PY
   IFS=' ' read -r -a ALLOW_HOSTS <<<"${allow_joined}"
 }
 
+compute_toolkits
 compute_allow_hosts
+
+TOOLKITS_CSV="$(IFS=,; echo "${TOOLKITS[*]-}")"
+TOOLKIT_TAG="none"
+if [[ ${#TOOLKITS[@]-0} -gt 0 ]]; then
+  TOOLKIT_TAG="$(printf "%s," "${TOOLKITS[@]}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9,' '_' | sed 's/,$//')"
+fi
+
+TAG="agentbox/${TARGET_AGENT}:$(echo "${BASE_IMAGE}" | tr '/:' '_')_${TOOLKIT_TAG}"
+
+if [[ "${VERBOSE}" == "1" ]]; then
+  echo "-> Building image ${TAG} (base: ${BASE_IMAGE}, toolkits: ${TOOLKITS_CSV:-none})" >&2
+  docker build \
+    --file "${REPO_ROOT}/docker/Dockerfile" \
+    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+    --build-arg "TOOLKITS=${TOOLKITS_CSV}" \
+    --tag "${TAG}" \
+    "${REPO_ROOT}"
+else
+  docker build \
+    --quiet \
+    --file "${REPO_ROOT}/docker/Dockerfile" \
+    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+    --build-arg "TOOLKITS=${TOOLKITS_CSV}" \
+    --tag "${TAG}" \
+    "${REPO_ROOT}" >/dev/null
+fi
+
+if [[ "${BUILD_ONLY}" -eq 1 ]]; then
+  echo "Build complete for ${TARGET_AGENT}"
+  exit 0
+fi
 
 [[ "${VERBOSE}" == "1" ]] && echo "-> Launching sandbox for ${TARGET_AGENT}" >&2
 MOUNTS=("-v" "${PWD}":/workspace)

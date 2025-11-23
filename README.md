@@ -7,6 +7,7 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 - Non-root execution with dropped capabilities; host workspace mounted at `/workspace`.
 - Network allowlist enforced via a firewall namespace (OpenAI/Anthropic + ChatGPT/auth hosts by default); opt-in `--full-network` to bypass.
 - Per-project/user config via `.agentbox` / `~/.agentbox` for allowlist entries.
+- Optional toolkits installed at build time via `.agentbox` / `~/.agentbox`.
 - Smoke-test harness (includes codex prompt check).
 
 ## Prerequisites
@@ -42,6 +43,20 @@ These assume Docker already provides isolation and remove in-agent approval prom
 - `--base <image>` overrides the base image (pass after the shim, e.g., `agentbox-codex --base ubuntu:24.04`).
 - `AGENTBOX_VERBOSE=1` streams Docker build output; `AGENTBOX_TTY=0|1|auto` controls TTY allocation.
 - Allowlist resolution order: project `.agentbox` takes priority over `~/.agentbox`.
+
+### Toolkits
+- Select toolkits in `.agentbox` (project) or `~/.agentbox` (user):
+  ```toml
+  [toolkits]
+  selected = ["python", "c_cpp", "web"]
+  ```
+- Available toolkits:
+  - `c_cpp`: build-essential, cmake, gdb
+  - `python`: python3, pip, venv
+  - `java`: default-jdk-headless
+  - `web`: yarnpkg
+  - `datascience`: numpy, pandas, scipy, matplotlib (Debian python3 packages)
+- Toolkit selection is applied at image build; changing it triggers a rebuild (tag includes the selected toolkits).
 
 ### Legacy shims
 - `bin/agentbox-run` still accepts an explicit agent argument if you prefer.

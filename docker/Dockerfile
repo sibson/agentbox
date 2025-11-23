@@ -25,6 +25,8 @@ RUN apt-get update \
         procps \
     && rm -rf /var/lib/apt/lists/*
 
+ARG TOOLKITS=""
+
 RUN useradd \
       --create-home \
       --home-dir "${AGENT_HOME}" \
@@ -39,6 +41,25 @@ WORKDIR /workspace
 COPY docker/entrypoint.sh /usr/local/bin/agent-entrypoint
 COPY docker/firewall.sh /usr/local/bin/agent-firewall
 RUN chmod +x /usr/local/bin/agent-entrypoint /usr/local/bin/agent-firewall
+
+COPY toolkits /opt/agentbox/toolkits
+
+RUN if [ -n "${TOOLKITS}" ]; then \
+      set -e; \
+      apt-get update; \
+      for tk in $(echo "${TOOLKITS}" | tr ',' ' '); do \
+        file="/opt/agentbox/toolkits/${tk}.list"; \
+        if [ ! -f "${file}" ]; then \
+          echo "Unknown toolkit '${tk}'" >&2; \
+          exit 1; \
+        fi; \
+        pkgs="$(grep -vE '^\s*#' "${file}" | tr '\n' ' ' | xargs)"; \
+        if [ -n "${pkgs}" ]; then \
+          apt-get install -y --no-install-recommends ${pkgs}; \
+        fi; \
+      done; \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
 
 RUN runuser -u "${AGENT_USERNAME}" -- bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'
 
