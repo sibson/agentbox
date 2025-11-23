@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "$#" -gt 0 && "$1" == "--prompt" ]]; then
+  shift
+  PROMPT_VALUE="${1:-}"
+  [[ -z "${PROMPT_VALUE}" ]] && { echo "Usage: agentbox-claude --prompt <text>"; exit 1; }
+  exec "${SCRIPT_DIR}/agentbox-run" claude -- claude --print --permission-mode bypassPermissions --model sonnet --output-format text -- "${PROMPT_VALUE}"
+fi
+
 AGENTBOX_AGENT="claude" exec "${SCRIPT_DIR}/agentbox-run" "$@"
