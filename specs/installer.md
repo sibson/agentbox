@@ -1,7 +1,7 @@
 # Installer Specification
 
 ## Goals
-- Provide a single-shot installer usable via `curl | bash` that installs user-owned shims under `~/.agentbox/bin` and, when writable, drops trampolines into a PATH directory (e.g., `/usr/local/bin` on macOS/Linux). Everything else lives under a cache/checkout dir.
+- Provide a single-shot installer usable via `curl | bash` that installs user-owned shims under a user bin dir (default `~/.agentbox/bin`). No writes to `/usr/local/bin` or other system paths. Everything else lives under a cache/checkout dir.
 - Support two install sources:
   - Remote install from the main branch (GitHub tarball/zip).
   - Local install (dev mode) from an already-cloned working copy.
@@ -19,8 +19,8 @@
    - Warn/exit with clear messages if requirements are missing.
 
 2. **Install targets**
-   - User-owned shims live in `~/.agentbox/bin` (default).
-   - Best-effort trampolines/symlinks into a PATH dir (default attempt: `/usr/local/bin`; overridable via `--prefix`). If not writable, emit a clear warning and suggest adding `~/.agentbox/bin` to PATH (instructions printed, no automatic edits).
+   - User-owned shims live in `~/.agentbox/bin` (default, overridable via `--bin-dir`).
+   - No writes to system PATH directories. If `--bin-dir` is not on PATH, print instructions for the user to add it (no automatic edits).
    - Shims: `agentbox-codex`, `agentbox-claude`, `agentbox-run`, `agentbox-setup`, and minimal helper wrappers.
    - Repo/toolkit content lives under a managed install dir (e.g., `~/.agentbox/installs/<id>/`); shims point there.
 
@@ -42,7 +42,7 @@
 ## CLI Sketch
 - `install-agentbox.sh` (curl|bash entrypoint)
   - Flags:
-    - `--prefix /usr/local/bin` (best-effort trampoline target; optional)
+    - `--bin-dir ~/.agentbox/bin` (default)
     - `--tarball <url-or-path>` (optional)
     - `--dev` (use current directory, no download)
     - `--yes` (non-interactive; overwrite existing links)
