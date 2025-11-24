@@ -1,7 +1,7 @@
 # Installer Specification
 
 ## Goals
-- Provide a single-shot installer usable via `curl | bash` that places only the Agentbox shims in `/usr/local/bin` (everything else lives under a cache/checkout dir).
+- Provide a single-shot installer usable via `curl | bash` that installs user-owned shims under `~/.agentbox/bin` and, when writable, drops trampolines into a PATH directory (e.g., `/usr/local/bin` on macOS/Linux). Everything else lives under a cache/checkout dir.
 - Support two install sources:
   - Remote install from the main branch (GitHub tarball/zip).
   - Local install (dev mode) from an already-cloned working copy.
@@ -19,9 +19,10 @@
    - Warn/exit with clear messages if requirements are missing.
 
 2. **Install targets**
-   - Install location: `/usr/local/bin` (overridable via `--prefix`).
-   - Only shims land in `--prefix`: `agentbox-codex`, `agentbox-claude`, `agentbox-run`, `agentbox-setup`, and any minimal helper wrappers.
-   - All other content (repo checkout, toolkits definitions, etc.) lives under a managed install dir (e.g., `~/.agentbox/installs/<id>/`); shims point there.
+   - User-owned shims live in `~/.agentbox/bin` (default).
+   - Best-effort trampolines/symlinks into a PATH dir (default attempt: `/usr/local/bin`; overridable via `--prefix`). If not writable, emit a clear warning and suggest adding `~/.agentbox/bin` to PATH (instructions printed, no automatic edits).
+   - Shims: `agentbox-codex`, `agentbox-claude`, `agentbox-run`, `agentbox-setup`, and minimal helper wrappers.
+   - Repo/toolkit content lives under a managed install dir (e.g., `~/.agentbox/installs/<id>/`); shims point there.
 
 3. **Sources / modes**
    - **Default (remote)**: fetch archive for the main branch from GitHub, extract to a versioned cache under `~/.agentbox/installs/<commit-or-date>/`, and link shims into `/usr/local/bin`.
@@ -41,7 +42,7 @@
 ## CLI Sketch
 - `install-agentbox.sh` (curl|bash entrypoint)
   - Flags:
-    - `--prefix /usr/local/bin` (default)
+    - `--prefix /usr/local/bin` (best-effort trampoline target; optional)
     - `--tarball <url-or-path>` (optional)
     - `--dev` (use current directory, no download)
     - `--yes` (non-interactive; overwrite existing links)
