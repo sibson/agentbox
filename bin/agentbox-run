@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+resolve_path() {
+  python3 - "$1" <<'PY'
+import os, sys
+print(os.path.realpath(sys.argv[1]))
+PY
+}
+
+SCRIPT_PATH="$(resolve_path "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 DEFAULT_BASE_IMAGE="debian:bookworm-slim"
@@ -27,6 +35,10 @@ TOOLKITS=()
 CUSTOM_CMD=()
 HOST_CODEX_AUTH="${AGENTBOX_CODEX_AUTH:-${HOME}/.codex}"
 HOST_CLAUDE_AUTH="${AGENTBOX_CLAUDE_AUTH:-${HOME}/.claude}"
+
+if [[ -n "${DOCKER_CONFIG:-}" && ! -d "${DOCKER_CONFIG}" ]]; then
+  fatal "DOCKER_CONFIG points to '${DOCKER_CONFIG}' but it does not exist; create it or unset DOCKER_CONFIG."
+fi
 
 usage() {
   cat <<'USAGE'
