@@ -1,7 +1,7 @@
 # Installer Specification
 
 ## Goals
-- Provide a single-shot installer usable via `curl | bash` that installs user-owned shims under a user bin dir (default `~/.agentbox/bin`). No writes to `/usr/local/bin` or other system paths. Everything else lives under a cache/checkout dir.
+- Provide a single-shot installer usable via `curl | bash` that installs user-owned shims under a user bin dir (default `~/.agentbox/bin`). No writes to system paths. Everything else lives under a single managed install dir.
 - Support two install sources:
   - Remote install from the main branch (GitHub tarball/zip).
   - Local install (dev mode) from an already-cloned working copy.
@@ -19,13 +19,13 @@
    - Warn/exit with clear messages if requirements are missing.
 
 2. **Install targets**
-   - User-owned shims live in `~/.agentbox/bin` (default, overridable via `--bin-dir`).
-   - No writes to system PATH directories. If `--bin-dir` is not on PATH, print instructions for the user to add it (no automatic edits).
-   - Shims: `agentbox-codex`, `agentbox-claude`, `agentbox-run`, `agentbox-setup`, and minimal helper wrappers.
-   - Repo/toolkit content lives under a managed install dir (e.g., `~/.agentbox/installs/<id>/`); shims point there.
+   - Single root: `~/.agentbox/`.
+   - Shims (`agentbox-codex`, `agentbox-claude`, `agentbox-run`, `agentbox-setup`) live in `~/.agentbox/bin` as symlinks/wrappers pointing to scripts under `~/.agentbox/src/bin` (default, overridable via `--bin-dir`).
+   - If `~/.local/bin` exists and is on `PATH`, also create symlinks there for convenience. Otherwise, print instructions for the user to add the chosen bin dir to PATH (no automatic edits).
+   - Repo source lives under `~/.agentbox/src/`; user-defined toolkits live under `~/.agentbox/toolkits/` (initially empty). No need to keep multiple versions in parallel for this iteration.
 
 3. **Sources / modes**
-   - **Default (remote)**: fetch archive for the main branch from GitHub, extract to a versioned cache under `~/.agentbox/installs/<commit-or-date>/`, and link shims into `/usr/local/bin`.
+   - **Default (remote)**: fetch archive for the main branch from GitHub, extract to `~/.agentbox/agentbox-src/`, and link shims accordingly.
    - **Local dev mode** (`--dev`): assume the script is run from an existing working copy; link shims in `/usr/local/bin` to this directory without downloading anything.
    - **Tarball input**: accept a `--tarball <url-or-path>` to install from a specific archive (e.g., release tarball). Behavior matches remote mode after extraction.
 
