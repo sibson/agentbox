@@ -2,7 +2,7 @@ As a user I want to be able to preconfigure the Docker image with tools for my u
 I can select toolkits via the configuration file.
 Toolkits are defined in `toolkits/`; each toolkit is a list of apt packages or direct downloads.
 
-Config format (project `.agentbox` or `~/.agentbox`):
+Config format (project `.agentbox/config.toml` or `~/.agentbox/config.toml`):
 ```toml
 [toolkits]
 selected = ["python", "c_cpp"]

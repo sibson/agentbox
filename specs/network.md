@@ -20,32 +20,19 @@
 
 ## `.agentbox` Configuration
 
-`agentbox-setup` writes a TOML file at `.agentbox` (project root) or, if absent, uses `~/.agentbox`. Relevant sections:
+`agentbox-setup` writes a TOML file at `.agentbox/config.toml` (project root) or, if absent, uses `~/.agentbox/config.toml`. Relevant sections:
 
 ```toml
-[agents]
-codex = true
-claude = true
-
 [network]
-mode = "allowlist"         # future-proof; current release only supports allowlist
-dns = ["8.8.8.8", "1.1.1.1"] # optional override; defaults to Docker-provided resolver
-
-[[network.allow]]
-host = "api.openai.com"
-
-[[network.allow]]
-host = "api.anthropic.com"
-
-[[network.allow]]
-host = "api.github.com"
-
-[[network.block]]
-host = "api.anthropic.com" # remove default host without editing built-in list
+mode = "allowlist"
+allow_hosts = ["api.github.com", "registry.npmjs.org"]
+block_hosts = ["chatgpt.com"] # optional removals from defaults
+allow_file = "extra-hosts.txt" # optional file, one host per line, '#' comments allowed (relative to config directory)
 ```
 
-- `network.allow`: additive allowlist entries (domain names, optional port override later).
-- `network.block`: entries removed from the effective allowlist.
+- `network.allow_hosts`: additive allowlist entries (domain names, optional port override later).
+- `network.block_hosts`: entries removed from the effective allowlist (useful to drop defaults).
+- `network.allow_file`: optional path to a file containing one host per line; resolved relative to the config file directory unless absolute; blank lines and `#` comments are ignored.
 - Hosts are resolved inside the firewall container before rules are applied; IPv4/IPv6 entries are both added.
 - Empty allowlist ⇒ no outbound traffic.
 
@@ -53,7 +40,7 @@ host = "api.anthropic.com" # remove default host without editing built-in list
 
 1. `agentbox-run` reads `.agentbox/config.toml` and computes the effective allowlist:
    ```
-   effective = (defaults ∪ network.allow) − network.block
+   effective = (defaults ∪ network.allow_hosts ∪ hosts_from_allow_file) − network.block_hosts
    ```
 2. `agentbox-run` creates a transient Docker network namespace by launching a short-lived **firewall container** with:
    - Base image: the same Agentbox image (so tooling is consistent).

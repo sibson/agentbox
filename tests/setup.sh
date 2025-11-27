@@ -13,9 +13,9 @@ pushd "${tmpdir}" >/dev/null
 # Run setup non-interactively with a known selection
 printf "python c_cpp\n" | "${SCRIPT}" >/dev/null
 
-CONFIG_PATH="${tmpdir}/.agentbox"
+CONFIG_PATH="${tmpdir}/.agentbox/config.toml"
 if [[ ! -f "${CONFIG_PATH}" ]]; then
-  echo ".agentbox was not created" >&2
+  echo ".agentbox/config.toml was not created" >&2
   exit 1
 fi
 

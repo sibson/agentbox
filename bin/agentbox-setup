@@ -10,7 +10,8 @@ PY
 
 SCRIPT_PATH="$(resolve_path "${BASH_SOURCE[0]}")"
 REPO_ROOT="$(cd "$(dirname "${SCRIPT_PATH}")/.." && pwd)"
-PROJECT_CONFIG="${PWD}/.agentbox"
+PROJECT_CONFIG_DIR="${PWD}/.agentbox"
+PROJECT_CONFIG_FILE="${PROJECT_CONFIG_DIR}/config.toml"
 
 if [[ ! -d "${REPO_ROOT}/toolkits" ]]; then
   echo "toolkits directory not found; aborting" >&2
@@ -18,7 +19,7 @@ if [[ ! -d "${REPO_ROOT}/toolkits" ]]; then
 fi
 
 echo "Agentbox setup"
-echo "This will write a TOML config to ${PROJECT_CONFIG}"
+echo "This will write a TOML config to ${PROJECT_CONFIG_FILE}"
 echo
 echo "Available toolkits:"
 TOOLKIT_NAMES=()
@@ -34,6 +35,8 @@ else
 fi
 echo
 read -r -p "Select toolkits (space-separated, leave empty for none): " -a SELECTED
+
+mkdir -p "${PROJECT_CONFIG_DIR}"
 
 {
   echo "# Agentbox configuration"
@@ -55,6 +58,6 @@ read -r -p "Select toolkits (space-separated, leave empty for none): " -a SELECT
   else
     echo 'selected = []'
   fi
-} > "${PROJECT_CONFIG}"
+} > "${PROJECT_CONFIG_FILE}"
 
-echo "Wrote ${PROJECT_CONFIG}"
+echo "Wrote ${PROJECT_CONFIG_FILE}"
