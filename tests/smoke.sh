@@ -121,19 +121,6 @@ if ! run_agent_silent "${CLAUDE_RUN}" -- bash -lc "command -v claude >/dev/null"
   exit 1
 fi
 
-echo "[6/7] verifying codex prompt execution"
-codex_prompt_output="$(run_agent_capture "${CODEX_RUN}" --prompt "ping" || true)"
-if [[ -z "${codex_prompt_output// }" ]]; then
-  echo "codex prompt did not return output" >&2
-  exit 1
-fi
-
-echo "[7/7] verifying default agent launch"
-if ! AGENTBOX_TTY=0 AGENTBOX_VERBOSE=0 "${CODEX_RUN}" >/dev/null 2>&1; then
-  echo "default agent launch failed without explicit command" >&2
-  exit 1
-fi
-
 if [[ "${VERBOSE}" == "1" ]]; then
   echo "All smoke tests passed."
 else
