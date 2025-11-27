@@ -13,6 +13,8 @@ Welcome! This repo builds a Docker sandbox launcher plus tests. Follow the steps
 
 ### 3. Testing & Verification
 - Always run the relevant tests before committing (at minimum `./tests/smoke.sh`; include new tests you add).
+- Docker-required: `./tests/smoke.sh`, `./tests/network_allowlist.sh`.
+- No Docker: `./tests/local/allowlist_parse.sh`, `./tests/local/setup.sh`.
 - Add new tests alongside new features when possible.
 
 ### 4. Safety & Constraints

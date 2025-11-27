@@ -69,7 +69,7 @@ These assume Docker already provides isolation and remove in-agent approval prom
 ```bash
 ./tests/smoke.sh                     # Docker required: identity, workspace, allowlist override, CLIs, codex prompt
 ./tests/smoke.sh --verbose           # Docker required: detailed step output + container logs
-./tests/network_allowlist_docker.sh  # Docker required: allowlist allow/block via config file and allow_file
+./tests/network_allowlist.sh         # Docker required: allowlist allow/block via config file and allow_file
 ./tests/local/allowlist_parse.sh     # No Docker: allowlist parser only
 ./tests/local/setup.sh               # No Docker: validates agentbox-setup writes expected config
 ```
