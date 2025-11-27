@@ -70,7 +70,7 @@ host = "api.anthropic.com" # remove default host without editing built-in list
 3. The firewall container keeps running, holding the network namespace alive.
 4. `agentbox-run` starts the actual agent container with:
    - `--network container:<firewall-container-id>` so it shares the namespace and inherits the programmed rules.
-   - The existing hardening flags remain (read/write workspace mount, `--cap-drop ALL`, `--pids-limit`, `--security-opt no-new-privileges`); the only change is that we drop the `--network none` flag because traffic control is now handled by the shared firewall namespace.
+   - The existing hardening flags remain (read/write workspace mount with `.agentbox` over-mounted read-only, `--cap-drop ALL`, `--pids-limit`, `--security-opt no-new-privileges`); the only change is that we drop the `--network none` flag because traffic control is now handled by the shared firewall namespace.
 5. When the agent exits, `agentbox-run` tears down both containers, removing the namespace.
 
 ## Prompt-Before-Change

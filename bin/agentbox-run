@@ -289,6 +289,9 @@ fi
 
 [[ "${VERBOSE}" == "1" ]] && echo "-> Launching sandbox for ${TARGET_AGENT}" >&2
 MOUNTS=("-v" "${PWD}":/workspace)
+if [[ -d "${CONFIG_PROJECT}" ]]; then
+  MOUNTS+=("-v" "${CONFIG_PROJECT}:/workspace/.agentbox:ro")
+fi
 if [[ "${TARGET_AGENT}" == "codex" && -d "${HOST_CODEX_AUTH}" ]]; then
   MOUNTS+=("-v" "${HOST_CODEX_AUTH}:/home/agent/.codex")
 fi

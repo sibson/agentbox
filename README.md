@@ -8,6 +8,7 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 - Network allowlist enforced via a firewall namespace (OpenAI/Anthropic + ChatGPT/auth hosts by default); opt-in `--full-network` to bypass.
 - Per-project/user config via `.agentbox` / `~/.agentbox` for allowlist entries.
 - Optional toolkits installed at build time via `.agentbox` / `~/.agentbox` (default: none).
+- Project `.agentbox` is mounted read-only in the sandbox to prevent in-container config tampering.
 - Smoke-test harness (includes codex prompt check).
 
 ## Prerequisites

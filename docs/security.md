@@ -26,7 +26,7 @@ This document captures the current security posture of Agentbox so contributors 
 - Never bake API keys into the image.
 
 ## Current Host Access Allowances
-- `/workspace`: bind-mounted working tree (read/write).
+- `/workspace`: bind-mounted working tree (read/write) with `.agentbox` over-mounted read-only to prevent in-container config edits.
 - No other host paths are mounted by default; mount auth dirs manually if needed.
 
 ## Network and Capability Posture

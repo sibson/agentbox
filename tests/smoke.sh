@@ -69,14 +69,14 @@ else
   echo "Running smoke tests..."
 fi
 
-echo "[1/6] verifying agent identity"
+echo "[1/7] verifying agent identity"
 output="$(run_agent_capture "${CODEX_RUN}" -- whoami)"
 if [[ "${output}" != "agent" ]]; then
   echo "expected user 'agent', got '${output}'" >&2
   exit 1
 fi
 
-echo "[2/6] verifying workspace access"
+echo "[2/7] verifying workspace access"
 test_file="${tmpdir}/sandbox.txt"
 echo "host-data" > "${test_file}"
 pushd "${tmpdir}" >/dev/null
@@ -87,7 +87,21 @@ if ! grep -q "container" "${test_file}"; then
   exit 1
 fi
 
-echo "[3/6] verifying network allowlist and override"
+echo "[3/7] verifying .agentbox mount is read-only"
+mkdir -p "${tmpdir}/.agentbox"
+echo '# test config' > "${tmpdir}/.agentbox/config.toml"
+pushd "${tmpdir}" >/dev/null
+if run_agent_silent "${CODEX_RUN}" -- bash -lc "echo blocked > .agentbox/should_not_exist"; then
+  echo ".agentbox should be read-only inside the container" >&2
+  exit 1
+fi
+popd >/dev/null
+if [[ -e "${tmpdir}/.agentbox/should_not_exist" ]]; then
+  echo ".agentbox was modified from inside the container" >&2
+  exit 1
+fi
+
+echo "[4/7] verifying network allowlist and override"
 if run_agent_silent "${CODEX_RUN}" -- bash -lc "curl --silent --fail --max-time 5 https://example.com >/dev/null"; then
   echo "example.com should be blocked by the default allowlist" >&2
   exit 1
@@ -97,7 +111,7 @@ if ! run_agent_silent "${CODEX_RUN}" --full-network -- bash -lc "curl --silent -
   exit 1
 fi
 
-echo "[4/6] verifying agent CLIs"
+echo "[5/7] verifying agent CLIs"
 if ! run_agent_silent "${CODEX_RUN}" -- bash -lc "command -v codex >/dev/null"; then
   echo "codex CLI not functioning" >&2
   exit 1
@@ -107,14 +121,14 @@ if ! run_agent_silent "${CLAUDE_RUN}" -- bash -lc "command -v claude >/dev/null"
   exit 1
 fi
 
-echo "[5/6] verifying codex prompt execution"
+echo "[6/7] verifying codex prompt execution"
 codex_prompt_output="$(run_agent_capture "${CODEX_RUN}" --prompt "ping" || true)"
 if [[ -z "${codex_prompt_output// }" ]]; then
   echo "codex prompt did not return output" >&2
   exit 1
 fi
 
-echo "[6/6] verifying default agent launch"
+echo "[7/7] verifying default agent launch"
 if ! AGENTBOX_TTY=0 AGENTBOX_VERBOSE=0 "${CODEX_RUN}" >/dev/null 2>&1; then
   echo "default agent launch failed without explicit command" >&2
   exit 1
