@@ -67,11 +67,11 @@ These assume Docker already provides isolation and remove in-agent approval prom
 
 ## Testing
 ```bash
-./tests/smoke.sh                   # Docker required: identity, workspace, allowlist override, CLIs, codex prompt
-./tests/smoke.sh --verbose         # Docker required: detailed step output + container logs
-./tests/network_allowlist_docker.sh # Docker required: allowlist allow/block via config file and allow_file
-./tests/allowlist_parse.sh         # No Docker: allowlist parser only
-./tests/setup.sh                   # No Docker: validates agentbox-setup writes expected config
+./tests/smoke.sh                     # Docker required: identity, workspace, allowlist override, CLIs, codex prompt
+./tests/smoke.sh --verbose           # Docker required: detailed step output + container logs
+./tests/network_allowlist_docker.sh  # Docker required: allowlist allow/block via config file and allow_file
+./tests/local/allowlist_parse.sh     # No Docker: allowlist parser only
+./tests/local/setup.sh               # No Docker: validates agentbox-setup writes expected config
 ```
 The harness checks user identity, workspace access, network allowlist/override, codex prompt execution, CLI availability, and default launch.
 
