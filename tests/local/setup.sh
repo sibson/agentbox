@@ -19,10 +19,28 @@ if [[ ! -f "${CONFIG_PATH}" ]]; then
   exit 1
 fi
 
-expected='selected = ["python", "c_cpp"]'
-if ! grep -F -q "${expected}" "${CONFIG_PATH}"; then
-  echo "unexpected toolkit selection in .agentbox" >&2
-  cat "${CONFIG_PATH}"
+expected="$(cat <<'EOF'
+# Agentbox configuration
+
+[toolkits]
+selected = ["python", "c_cpp"]
+# Example: selected = ["python", "c_cpp"]
+
+[network]
+# Defaults allow OpenAI/Anthropic API hosts; uncomment to customize.
+# allow_hosts = ["api.github.com", "registry.npmjs.org"]
+# block_hosts = ["chatgpt.com"] # optional removals from defaults
+# allow_file = "extra-hosts.txt" # optional, relative to this file
+EOF
+)"
+
+actual="$(cat "${CONFIG_PATH}")"
+if [[ "${actual}" != "${expected}" ]]; then
+  echo "unexpected config content in .agentbox/config.toml" >&2
+  echo "expected:" >&2
+  printf '%s\n' "${expected}" >&2
+  echo "got:" >&2
+  printf '%s\n' "${actual}" >&2
   exit 1
 fi
 

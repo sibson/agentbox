@@ -57,10 +57,10 @@ These assume Docker already provides isolation and remove in-agent approval prom
   - `c_cpp`: build-essential, cmake, gdb
   - `python`: python3, pip, venv
   - `java`: default-jdk-headless
-  - `web`: yarnpkg
+- `web`: yarnpkg
   - `datascience`: numpy, pandas, scipy, matplotlib (Debian python3 packages)
 - Toolkit selection is applied at image build; changing it triggers a rebuild (tag includes the selected toolkits).
-- Quick helper: `bin/agentbox-setup` prompts and writes `.agentbox/config.toml` with selected toolkits.
+- Quick helper: `bin/agentbox-setup` prompts and writes `.agentbox/config.toml` with selected toolkits plus commented network allowlist examples.
 
 ### Legacy shims
 - `bin/agentbox-run` still accepts an explicit agent argument if you prefer.
