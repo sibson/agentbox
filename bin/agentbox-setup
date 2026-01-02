@@ -64,10 +64,13 @@ cat > "${PROJECT_CONFIG_FILE}" <<EOF
 ${selected_line}
 # Example: selected = ["python", "c_cpp"]
 
+[agent]
+# default = "last_used" # or "codex"/"claude"; falls back to explicit agent args/env
+
 [network]
 # Defaults allow OpenAI/Anthropic API hosts; uncomment to customize.
-# allow_hosts = ["api.github.com", "registry.npmjs.org"]
-# block_hosts = ["chatgpt.com"] # optional removals from defaults
+# allow_hosts = ["api.github.com", "registry.npmjs.org", "*.example.com"]
+# block_hosts = ["chatgpt.com"] # optional removals from defaults; glob patterns allowed
 # allow_file = "extra-hosts.txt" # optional, relative to this file
 EOF
 

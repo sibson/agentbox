@@ -30,7 +30,7 @@ This document captures the current security posture of Agentbox so contributors 
 - No other host paths are mounted by default; mount auth dirs manually if needed.
 
 ## Network and Capability Posture
-- Network: iptables allowlist (defaults: `api.openai.com`, `platform.openai.com`, `chatgpt.com`, `chat.openai.com`, `auth.openai.com`, `api.anthropic.com`); `--full-network` bypasses it.
+- Network: iptables allowlist (defaults: `api.openai.com`, `platform.openai.com`, `chatgpt.com`, `chat.openai.com`, `auth.openai.com`, `api.anthropic.com`); supports wildcard allowlist entries (e.g., `*.example.com`) and globbed block rules, with wildcard resolution via apex + synthetic probe; `--full-network` bypasses it.
 - Capabilities: `--cap-drop ALL`, `--security-opt no-new-privileges`.
 - User: non-root `agent`.
 

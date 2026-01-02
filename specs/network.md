@@ -31,10 +31,11 @@ allow_file = "extra-hosts.txt" # optional file, one host per line, '#' comments 
 ```
 
 - `network.allow_hosts`: additive allowlist entries (domain names, optional port override later).
-- `network.block_hosts`: entries removed from the effective allowlist (useful to drop defaults).
+- `network.block_hosts`: entries removed from the effective allowlist (useful to drop defaults); glob patterns are supported (e.g., `*.openai.com` removes all matching entries).
 - `network.allow_file`: optional path to a file containing one host per line; resolved relative to the config file directory unless absolute; blank lines and `#` comments are ignored.
 - Hosts are resolved inside the firewall container before rules are applied; IPv4/IPv6 entries are both added.
 - Empty allowlist ⇒ no outbound traffic.
+- Wildcards are supported in `allow_hosts`/`allow_file` entries: `*.example.com` is treated as a domain suffix and resolved via the apex plus a synthetic probe (`agentbox-wildcard-probe.example.com`) so wildcard DNS records can be captured.
 
 ## Runtime Architecture
 
@@ -46,7 +47,7 @@ allow_file = "extra-hosts.txt" # optional file, one host per line, '#' comments 
    - Base image: the same Agentbox image (so tooling is consistent).
    - Capabilities: `NET_ADMIN` only (other caps dropped).
    - Command:
-     - Resolve each host using `getent ahosts` until at least one IP is found.
+     - Resolve each host using `getent ahosts` until at least one IP is found; for wildcard entries (`*.domain.tld`), try both the apex and `agentbox-wildcard-probe.<suffix>` to catch wildcard DNS targets.
      - Program `iptables` rules:
        - Flush existing rules.
        - Default policies: `INPUT ACCEPT`, `FORWARD DROP`, `OUTPUT DROP`.

@@ -26,6 +26,10 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 ### Authentication
 - Configure host credential directories as needed (e.g., Codex `~/.codex`, Claude `~/.claude`). The launcher does not manage these paths; mount them manually if required.
 
+### Agent selection defaults
+- Set `[agent].default = "last_used"` in `.agentbox/config.toml` (project) or `~/.agentbox/config.toml` (user) to reuse the most recent agent (`~/.agentbox/last_agent` records it).
+- Or set `[agent].default = "codex"` / `"claude"` to pick a fixed default; CLI flags/env still override.
+
 ### Networking
 - Default egress is limited to Codex/Claude API hosts (`api.openai.com`, `platform.openai.com`, `chatgpt.com`, `chat.openai.com`, `auth.openai.com`, `api.anthropic.com`).
 - Add hosts with a single list instead of repeated blocks:
@@ -35,6 +39,7 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
   block_hosts = ["chatgpt.com"] # optional removals
   allow_file = "extra-hosts.txt" # optional, one host per line, # comments allowed (relative to config dir)
   ```
+- Wildcards are supported: `allow_hosts = ["*.example.com"]` permits subdomains (resolved via the apex + a synthetic wildcard probe); `block_hosts` accepts glob patterns too.
 - Or run with `--full-network` to disable the firewall entirely.
 
 ### Default agent flags in the sandbox
@@ -70,6 +75,7 @@ These assume Docker already provides isolation and remove in-agent approval prom
 ./tests/smoke.sh                     # Docker required: identity, workspace, allowlist override, CLIs, codex prompt
 ./tests/smoke.sh --verbose           # Docker required: detailed step output + container logs
 ./tests/network_allowlist.sh         # Docker required: allowlist allow/block via config file and allow_file
+./tests/local/default_agent.sh       # No Docker: default agent selection from config/last_agent
 ./tests/local/allowlist_parse.sh     # No Docker: allowlist parser only
 ./tests/local/setup.sh               # No Docker: validates agentbox-setup writes expected config
 ```

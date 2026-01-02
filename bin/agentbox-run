@@ -27,6 +27,8 @@ CONFIG_HOME_DIR="${HOME}/.agentbox"
 CONFIG_PROJECT="${CONFIG_PROJECT_DIR}/config.toml"
 CONFIG_HOME="${CONFIG_HOME_DIR}/config.toml"
 CONFIG_PATHS_JOINED="$(printf '%s:' "${CONFIG_PROJECT}" "${CONFIG_HOME}")"
+LAST_AGENT_FILE_DEFAULT="${CONFIG_HOME_DIR}/last_agent"
+LAST_AGENT_FILE="${AGENTBOX_LAST_AGENT_FILE:-${LAST_AGENT_FILE_DEFAULT}}"
 
 TARGET_AGENT="${AGENTBOX_AGENT:-}"
 BASE_IMAGE="${DEFAULT_BASE_IMAGE}"
@@ -59,6 +61,67 @@ USAGE
 
 fatal() { echo "agentbox-run: $*" >&2; exit 1; }
 
+compute_default_agent() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    fatal "python3 is required for parsing .agentbox"
+  fi
+
+  local py_tmp
+  py_tmp="$(mktemp)"
+  cat >"${py_tmp}" <<'PY'
+import os, re
+
+def extract_default(raw_text):
+    toml_mod = None
+    try:
+        import tomllib as toml_mod  # type: ignore[attr-defined]
+    except ModuleNotFoundError:
+        try:
+            import tomli as toml_mod  # type: ignore[assignment]
+        except ModuleNotFoundError:
+            toml_mod = None
+
+    if toml_mod:
+        try:
+            data = toml_mod.loads(raw_text)
+        except Exception:
+            data = None
+        if data is not None:
+            value = data.get("agent", {}).get("default")
+            if isinstance(value, str):
+                value = value.strip()
+                if value:
+                    return value
+
+    m = re.search(r'\[agent\].*?default\s*=\s*["\']([^"\']+)["\']', raw_text, re.DOTALL)
+    if m:
+        value = m.group(1).strip()
+        if value:
+            return value
+    return ""
+
+config_paths = [p for p in os.environ.get("CONFIG_PATHS", "").split(":") if p]
+for path in config_paths:
+    if not os.path.isfile(path):
+        continue
+    with open(path, "r", encoding="utf-8") as f:
+        default_val = extract_default(f.read())
+        if default_val:
+            print(default_val)
+            break
+PY
+
+  local default_agent
+  default_agent="$(CONFIG_PATHS="${CONFIG_PATHS_JOINED}" python3 "${py_tmp}")"
+  local status=$?
+  rm -f "${py_tmp}"
+  if [[ ${status} -ne 0 ]]; then
+    fatal "failed to parse default agent from .agentbox"
+  fi
+
+  echo "${default_agent}"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --base)
@@ -88,8 +151,21 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+DEFAULT_AGENT=""
+DEFAULT_AGENT="$(compute_default_agent)"
+
+if [[ -z "${TARGET_AGENT}" && -n "${DEFAULT_AGENT}" ]]; then
+  if [[ "${DEFAULT_AGENT}" == "last_used" ]]; then
+    if [[ -f "${LAST_AGENT_FILE}" ]]; then
+      TARGET_AGENT="$(tr -d '[:space:]' < "${LAST_AGENT_FILE}")"
+    fi
+  else
+    TARGET_AGENT="${DEFAULT_AGENT}"
+  fi
+fi
+
 if [[ -z "${TARGET_AGENT}" ]]; then
-  fatal "Missing agent argument"
+  fatal "Missing agent argument (pass 'codex' or 'claude', or set [agent].default in .agentbox)"
 fi
 
 TTY_OPT=""
@@ -122,7 +198,7 @@ compute_toolkits() {
 
   local py_tmp
   py_tmp="$(mktemp)"
-  cat >"${py_tmp}" <<'PY'
+cat >"${py_tmp}" <<'PY'
 import os, re
 
 config_paths = [p for p in os.environ.get("CONFIG_PATHS", "").split(":") if p]
@@ -191,6 +267,7 @@ compute_allow_hosts() {
   py_tmp="$(mktemp)"
   cat >"${py_tmp}" <<'PY'
 import os, re
+from fnmatch import fnmatch as fnmatch_match
 
 def parse_hosts(value):
     hosts = []
@@ -286,7 +363,18 @@ def process_path(path: str):
 for path in config_paths:
     process_path(path)
 
-effective = sorted(h for h in allow if h and h not in block)
+def is_blocked(host: str, patterns) -> bool:
+    if host in block:
+        return True
+    for pat in patterns:
+        if not pat:
+            continue
+        if pat == host or fnmatch_match(host, pat):
+            return True
+    return False
+
+block_patterns = sorted(block)
+effective = sorted(h for h in allow if h and not is_blocked(h, block_patterns))
 print(" ".join(effective))
 PY
 
@@ -303,17 +391,29 @@ PY
   IFS=' ' read -r -a ALLOW_HOSTS <<<"${allow_joined}"
 }
 
+record_last_agent() {
+  if [[ "${AGENTBOX_ONLY_PRINT_ALLOWLIST:-0}" == "1" ]]; then
+    return
+  fi
+  [[ -z "${LAST_AGENT_FILE}" ]] && return
+  local dir
+  dir="$(dirname "${LAST_AGENT_FILE}")"
+  mkdir -p "${dir}" >/dev/null 2>&1 || return
+  printf '%s\n' "${TARGET_AGENT}" > "${LAST_AGENT_FILE}" 2>/dev/null || true
+}
+
 compute_toolkits
 compute_allow_hosts
+record_last_agent
 
 if [[ "${AGENTBOX_ONLY_PRINT_ALLOWLIST:-0}" == "1" ]]; then
   printf '%s\n' "${ALLOW_HOSTS[@]}"
   exit 0
 fi
 
-TOOLKITS_CSV="$(IFS=,; echo "${TOOLKITS[*]-}")"
+TOOLKITS_CSV="$(IFS=,; echo "${TOOLKITS[*]}")"
 TOOLKIT_TAG="none"
-if [[ ${#TOOLKITS[@]-0} -gt 0 ]]; then
+if [[ ${#TOOLKITS[@]} -gt 0 && -n "${TOOLKITS_CSV}" ]]; then
   TOOLKIT_TAG="$(printf "%s," "${TOOLKITS[@]}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9,' '_' | sed 's/,$//')"
 fi
 

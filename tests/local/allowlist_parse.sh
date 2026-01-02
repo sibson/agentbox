@@ -14,14 +14,15 @@ mkdir -p "${config_dir}"
 cat >"${config_dir}/config.toml" <<'EOF'
 [network]
 mode = "allowlist"
-allow_hosts = ["api.github.com", "registry.npmjs.org"]
-block_hosts = ["chatgpt.com"]
+allow_hosts = ["api.github.com", "registry.npmjs.org", "*.rgate.click"]
+block_hosts = ["chatgpt.com", "*.blocked.test"]
 allow_file = "allow-extra.txt"
 EOF
 
 cat >"${config_dir}/allow-extra.txt" <<'EOF'
 # extra allowlist entries
 downloads.example.com
+*.blocked.test
  api.github.com
 EOF
 
@@ -36,6 +37,7 @@ while IFS= read -r line; do
 done <<<"${output}"
 
 expected=(
+  "*.rgate.click"
   "api.anthropic.com"
   "api.github.com"
   "api.openai.com"

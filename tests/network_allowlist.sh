@@ -22,8 +22,9 @@ run_agent_silent() {
 echo "Running network allowlist (docker) tests..."
 
 curl_cmd=(bash -lc "curl --silent --fail --max-time 8 https://example.com >/dev/null")
+curl_cmd_www=(bash -lc "curl --silent --fail --max-time 8 https://www.example.com >/dev/null")
 
-echo "[1/3] default deny for example.com"
+echo "[1/4] default deny for example.com"
 pushd "${tmpdir}" >/dev/null
 if run_agent_silent "${curl_cmd[@]}"; then
   echo "example.com should be blocked by default allowlist" >&2
@@ -31,7 +32,7 @@ if run_agent_silent "${curl_cmd[@]}"; then
 fi
 popd >/dev/null
 
-echo "[2/3] allow via allow_file"
+echo "[2/4] allow via allow_file"
 mkdir -p "${tmpdir}/.agentbox"
 cat >"${tmpdir}/.agentbox/config.toml" <<'EOF'
 [network]
@@ -50,7 +51,7 @@ if ! run_agent_silent "${curl_cmd[@]}"; then
 fi
 popd >/dev/null
 
-echo "[3/3] block overrides allow"
+echo "[3/4] block overrides allow"
 cat >"${tmpdir}/.agentbox/config.toml" <<'EOF'
 [network]
 mode = "allowlist"
@@ -60,6 +61,19 @@ EOF
 pushd "${tmpdir}" >/dev/null
 if run_agent_silent "${curl_cmd[@]}"; then
   echo "example.com should be blocked when listed in block_hosts" >&2
+  exit 1
+fi
+popd >/dev/null
+
+echo "[4/4] wildcard allow_hosts entry"
+cat >"${tmpdir}/.agentbox/config.toml" <<'EOF'
+[network]
+mode = "allowlist"
+allow_hosts = ["*.example.com"]
+EOF
+pushd "${tmpdir}" >/dev/null
+if ! run_agent_silent "${curl_cmd_www[@]}"; then
+  echo "www.example.com should be reachable when allowed via wildcard" >&2
   exit 1
 fi
 popd >/dev/null
