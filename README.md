@@ -19,6 +19,8 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 ```bash
 ./bin/agentbox-codex
 ./bin/agentbox-claude -- bash -lc "ls -la"
+# Refresh the image/CLIs (e.g., when Codex prompts for an update)
+./bin/agentbox-codex --rebuild
 # Run a one-off prompt non-interactively (uses codex exec)
 ./bin/agentbox-codex --prompt "List files"
 ```

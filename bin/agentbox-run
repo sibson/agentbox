@@ -33,6 +33,7 @@ LAST_AGENT_FILE="${AGENTBOX_LAST_AGENT_FILE:-${LAST_AGENT_FILE_DEFAULT}}"
 TARGET_AGENT="${AGENTBOX_AGENT:-}"
 BASE_IMAGE="${DEFAULT_BASE_IMAGE}"
 BUILD_ONLY=0
+REBUILD="${AGENTBOX_REBUILD:-0}"
 PROMPT_VALUE=""
 FULL_NETWORK=0
 TOOLKITS=()
@@ -53,6 +54,7 @@ Minimal launcher: builds the image (if needed) and runs the agent with a network
 Options:
   --base <image>     Override base image (default: debian:bookworm-slim)
   --build-only       Build the image and exit
+  --rebuild          Force a fresh image rebuild (no Docker cache); useful when CLI updates are available
   --prompt <text>    Run a one-off Codex exec with the given prompt (codex only)
   --full-network     Disable firewall allowlist (bridge networking)
   -h, --help         Show this help
@@ -129,6 +131,8 @@ while [[ $# -gt 0 ]]; do
       BASE_IMAGE="$2"; shift 2;;
     --build-only)
       BUILD_ONLY=1; shift;;
+    --rebuild)
+      REBUILD=1; shift;;
     --prompt)
       [[ $# -ge 2 ]] || fatal "--prompt requires a value"
       PROMPT_VALUE="$2"; shift 2;;
@@ -418,10 +422,15 @@ if [[ ${#TOOLKITS[@]-0} -gt 0 && -n "${TOOLKITS_CSV}" ]]; then
 fi
 
 TAG="agentbox/${TARGET_AGENT}:$(echo "${BASE_IMAGE}" | tr '/:' '_')_${TOOLKIT_TAG}"
+DOCKER_BUILD_FLAGS=()
+if [[ "${REBUILD}" == "1" ]]; then
+  DOCKER_BUILD_FLAGS+=(--no-cache --pull)
+fi
 
 if [[ "${VERBOSE}" == "1" ]]; then
   echo "-> Building image ${TAG} (base: ${BASE_IMAGE}, toolkits: ${TOOLKITS_CSV:-none})" >&2
   docker build \
+    "${DOCKER_BUILD_FLAGS[@]}" \
     --file "${REPO_ROOT}/docker/Dockerfile" \
     --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
     --build-arg "TOOLKITS=${TOOLKITS_CSV}" \
@@ -430,6 +439,7 @@ if [[ "${VERBOSE}" == "1" ]]; then
 else
   docker build \
     --quiet \
+    "${DOCKER_BUILD_FLAGS[@]}" \
     --file "${REPO_ROOT}/docker/Dockerfile" \
     --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
     --build-arg "TOOLKITS=${TOOLKITS_CSV}" \
