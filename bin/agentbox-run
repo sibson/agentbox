@@ -411,9 +411,9 @@ if [[ "${AGENTBOX_ONLY_PRINT_ALLOWLIST:-0}" == "1" ]]; then
   exit 0
 fi
 
-TOOLKITS_CSV="$(IFS=,; echo "${TOOLKITS[*]}")"
+TOOLKITS_CSV="$(IFS=,; echo "${TOOLKITS[*]-}")"
 TOOLKIT_TAG="none"
-if [[ ${#TOOLKITS[@]} -gt 0 && -n "${TOOLKITS_CSV}" ]]; then
+if [[ ${#TOOLKITS[@]-0} -gt 0 && -n "${TOOLKITS_CSV}" ]]; then
   TOOLKIT_TAG="$(printf "%s," "${TOOLKITS[@]}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9,' '_' | sed 's/,$//')"
 fi
 
