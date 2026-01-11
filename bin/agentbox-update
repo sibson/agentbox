@@ -35,5 +35,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 for agent in codex claude; do
-  "${SCRIPT_DIR}/agentbox-run" "${BASE_ARGS[@]}" --rebuild --build-only "${agent}"
+  if [[ ${#BASE_ARGS[@]} -gt 0 ]]; then
+    "${SCRIPT_DIR}/agentbox-run" "${BASE_ARGS[@]}" --rebuild --build-only "${agent}"
+  else
+    "${SCRIPT_DIR}/agentbox-run" --rebuild --build-only "${agent}"
+  fi
 done
