@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+resolve_path() {
+  python3 - "$1" <<'PY'
+import os, sys
+print(os.path.realpath(sys.argv[1]))
+PY
+}
+
+SCRIPT_PATH="$(resolve_path "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
+
+usage() {
+  cat <<'USAGE'
+Usage: bin/agentbox-update [--base <image>]
+
+Rebuilds the Agentbox images for both codex and claude.
+USAGE
+}
+
+fatal() { echo "agentbox-update: $*" >&2; exit 1; }
+
+BASE_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base)
+      [[ $# -ge 2 ]] || fatal "--base requires a value"
+      BASE_ARGS+=(--base "$2"); shift 2;;
+    -h|--help)
+      usage; exit 0;;
+    *)
+      fatal "Unknown option '$1'";;
+  esac
+done
+
+for agent in codex claude; do
+  "${SCRIPT_DIR}/agentbox-run" "${BASE_ARGS[@]}" --rebuild --build-only "${agent}"
+done

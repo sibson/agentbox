@@ -21,6 +21,8 @@ Agentbox is a Docker-based sandbox for running CLI agents (Codex, Claude Code) l
 ./bin/agentbox-claude -- bash -lc "ls -la"
 # Refresh the image/CLIs (e.g., when Codex prompts for an update)
 ./bin/agentbox-codex --rebuild
+# Refresh images for both agents
+./bin/agentbox-update
 # Run a one-off prompt non-interactively (uses codex exec)
 ./bin/agentbox-codex --prompt "List files"
 ```
@@ -85,6 +87,7 @@ The harness checks user identity, workspace access, network allowlist/override, 
 
 ## Project Layout
 - `bin/agentbox-run` – launches agents.
+- `bin/agentbox-update` – rebuilds images for both agents.
 - `docker/Dockerfile` – sandbox image definition.
 - `docker/entrypoint.sh` – drops into the requested command.
 - `tests/smoke.sh` – basic validation script.

@@ -109,14 +109,14 @@ make_link() {
   ln -s "${target}" "${link_path}"
 }
 
-for shim in agentbox-codex agentbox-claude agentbox-run agentbox-setup; do
+for shim in agentbox-codex agentbox-claude agentbox-run agentbox-setup agentbox-update; do
   make_link "${SRC_DIR}/bin/${shim}" "${BIN_DIR}/${shim}"
 done
 
 LINKED_LOCAL_BIN=0
 if [[ -d "${LOCAL_BIN}" ]] && [[ ":$PATH:" == *":${LOCAL_BIN}:"* ]]; then
   mkdir -p "${LOCAL_BIN}"
-  for shim in agentbox-codex agentbox-claude agentbox-run agentbox-setup; do
+  for shim in agentbox-codex agentbox-claude agentbox-run agentbox-setup agentbox-update; do
     make_link "${SRC_DIR}/bin/${shim}" "${LOCAL_BIN}/${shim}"
   done
   LINKED_LOCAL_BIN=1
