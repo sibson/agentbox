@@ -427,24 +427,22 @@ if [[ "${REBUILD}" == "1" ]]; then
   DOCKER_BUILD_FLAGS+=(--no-cache --pull)
 fi
 
+build_args=(
+  --file "${REPO_ROOT}/docker/Dockerfile"
+  --build-arg "BASE_IMAGE=${BASE_IMAGE}"
+  --build-arg "TOOLKITS=${TOOLKITS_CSV}"
+  --tag "${TAG}"
+  "${REPO_ROOT}"
+)
+if [[ ${#DOCKER_BUILD_FLAGS[@]} -gt 0 ]]; then
+  build_args=("${DOCKER_BUILD_FLAGS[@]}" "${build_args[@]}")
+fi
+
 if [[ "${VERBOSE}" == "1" ]]; then
   echo "-> Building image ${TAG} (base: ${BASE_IMAGE}, toolkits: ${TOOLKITS_CSV:-none})" >&2
-  docker build \
-    "${DOCKER_BUILD_FLAGS[@]}" \
-    --file "${REPO_ROOT}/docker/Dockerfile" \
-    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-    --build-arg "TOOLKITS=${TOOLKITS_CSV}" \
-    --tag "${TAG}" \
-    "${REPO_ROOT}"
+  docker build "${build_args[@]}"
 else
-  docker build \
-    --quiet \
-    "${DOCKER_BUILD_FLAGS[@]}" \
-    --file "${REPO_ROOT}/docker/Dockerfile" \
-    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-    --build-arg "TOOLKITS=${TOOLKITS_CSV}" \
-    --tag "${TAG}" \
-    "${REPO_ROOT}" >/dev/null
+  docker build --quiet "${build_args[@]}" >/dev/null
 fi
 
 if [[ "${BUILD_ONLY}" -eq 1 ]]; then
